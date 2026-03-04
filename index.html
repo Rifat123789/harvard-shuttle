@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Harvard Shuttle</title>
+</head>
+<body>
+
+<h1>Harvard Shuttle Finder</h1>
+<button onclick="find()">Find Shuttle</button>
+
+<pre id="result"></pre>
+
+<script>
+function find() {
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+
+    const res = await fetch(`/plan?lat=${lat}&lon=${lon}&destStopId=place-harsq`);
+    const data = await res.json();
+
+    document.getElementById("result").textContent =
+      JSON.stringify(data, null, 2);
+  });
+}
+</script>
+
+</body>
+</html>
