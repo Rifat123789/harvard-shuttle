@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Harvard Shuttle</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --crimson: #a41034;
+      --crimson-dark: #7a0c28;
+      --crimson-light: #c5173f;
+      --surface: #ffffff;
+      --surface-2: #f8f8f8;
+      --border: #e8e8e8;
+      --text: #0f0f0f;
+      --text-2: #5a5a5a;
+      --text-3: #9a9a9a;
+      --blue: #2563eb;
+      --green: #16a34a;
+      --shadow-sm: 0 1px 4px rgba(0,0,0,0.08);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.12);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,0.16);
+      --radius: 14px;
+      --font: 'DM Sans', system-ui, sans-serif;
+      --font-mono: 'DM Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: #f0f0f0;
+      color: var(--text);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .app-header {
+      background: var(--crimson);
+      color: white;
+      padding: 0 16px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(164,16,52,0.35);
+      z-index: 1000;
+      flex-shrink: 0;
+    }
+
+    .app-brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .app-brand-icon {
+      width: 28px;
+      height: 28px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+    }
+
+    .app-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .app-sub {
+      font-size: 10px;
+      font-weight: 400;
+      opacity: 0.7;
+      margin-top: 1px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .rt-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+
+    .rt-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #4ade80;
+      flex-shrink: 0;
+    }
+
+    #map {
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+    }
+
+    .floating-controls {
+      position: fixed;
+      top: 62px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1100;
+      width: 100%;
+      max-width: 600px;
+      padding: 0 12px;
+      pointer-events: none;
+    }
+
+    .fc-row {
+      display: flex;
+      gap: 7px;
+      pointer-events: auto;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 9px 15px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: var(--shadow-md);
+      white-space: nowrap;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.55; pointer-events: none; }
+
+    .btn-primary {
+      background: var(--crimson);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    .btn-icon-wrap {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.18);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .btn-secondary .btn-icon-wrap {
+      background: #f3f3f3;
+    }
+
+    .dest-select {
+      flex: 1;
+      min-width: 0;
+      border: none;
+      border-radius: 999px;
+      padding: 9px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: var(--font);
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--shadow-md);
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a5a5a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+    }
+    .dest-select:focus { outline: none; }
+
+    .route-legend {
+      position: fixed;
+      top: 62px;
+      right: 12px;
+      z-index: 1100;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      padding: 10px 12px;
+      min-width: 120px;
+      max-width: 160px;
+      pointer-events: none;
+    }
+
+    .legend-title {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 7px;
+    }
+
+    .legend-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11.5px;
+      font-weight: 500;
+    }
+
+    .legend-swatch {
+      width: 22px;
+      height: 4px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .legend-item.active .legend-label {
+      font-weight: 700;
+    }
+
+    .info-panel {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      padding: 0 10px 10px;
+      z-index: 1200;
+      display: flex;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .info-card {
+      width: 100%;
+      max-width: 600px;
+      background: var(--surface);
+      border-radius: 16px 16px 12px 12px;
+      box-shadow: var(--shadow-lg);
+      padding: 11px 14px 12px;
+      pointer-events: auto;
+    }
+
+    .info-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .info-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .info-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #f3f4f6;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--text-2);
+    }
+
+    .info-badge-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #4ade80;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+
+    .info-cell-label {
+      font-size: 9.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-3);
+      margin-bottom: 2px;
+    }
+
+    .info-cell-value {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .status-bar {
+      font-size: 11px;
+      color: var(--text-3);
+      border-top: 1px solid var(--border);
+      padding-top: 5px;
+      margin-top: 3px;
+    }
+
+    .plan-card {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      padding: 0 10px 10px;
+      z-index: 1300;
+      display: flex;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .plan-card-inner {
+      width: 100%;
+      max-width: 600px;
+      background: var(--surface);
+      border-radius: 16px 16px 12px 12px;
+      box-shadow: var(--shadow-lg);
+      pointer-events: auto;
+      overflow: hidden;
+      animation: slideUp 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(24px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    .plan-header {
+      padding: 11px 14px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .plan-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .plan-route-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border-radius: 999px;
+      padding: 4px 11px;
+      font-size: 12px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: 0.01em;
+    }
+
+    .plan-dest-text {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-2);
+    }
+
+    .plan-close {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      border: none;
+      background: #f3f3f3;
+      color: var(--text-2);
+      font-size: 13px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .plan-close:hover { background: #e8e8e8; }
+
+    .plan-steps {
+      display: flex;
+      align-items: center;
+      padding: 12px 14px 10px;
+      gap: 0;
+    }
+
+    .plan-step {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      text-align: center;
+    }
+
+    .plan-step-icon {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .plan-step-kicker {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-3);
+    }
+
+    .plan-step-val {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .plan-step-sub {
+      font-size: 10.5px;
+      color: var(--text-3);
+      font-weight: 500;
+      max-width: 90px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .plan-arrow {
+      font-size: 16px;
+      color: #d1d5db;
+      padding: 0 4px;
+      flex-shrink: 0;
+      margin-bottom: 14px;
+    }
+
+    .plan-footer {
+      padding: 5px 14px 8px;
+      font-size: 10.5px;
+      color: var(--text-3);
+      border-top: 1px solid var(--border);
+      font-family: var(--font-mono);
+    }
+
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px !important;
+      box-shadow: var(--shadow-lg) !important;
+      padding: 0 !important;
+      overflow: hidden;
+      font-family: var(--font) !important;
+    }
+    .leaflet-popup-content {
+      margin: 0 !important;
+      min-width: 190px;
+    }
+    .leaflet-popup-tip-container { display: none; }
+    .leaflet-popup-close-button {
+      top: 8px !important;
+      right: 8px !important;
+      font-size: 16px !important;
+      color: rgba(255,255,255,0.7) !important;
+      z-index: 10;
+    }
+
+    .popup-header {
+      padding: 10px 12px 8px;
+      background: var(--crimson);
+      color: white;
+    }
+    .popup-stop-name {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .popup-routes-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 5px;
+    }
+    .popup-route-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 700;
+      color: white;
+      border: 1px solid rgba(255,255,255,0.25);
+    }
+    .popup-body {
+      padding: 8px 12px 10px;
+    }
+    .popup-arrivals-label {
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-3);
+      margin-bottom: 5px;
+    }
+    .popup-arrival-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .popup-arrival-row:last-child { border-bottom: none; }
+    .popup-arrival-name {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+    }
+    .popup-arrival-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .popup-arrival-mins {
+      font-weight: 700;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+    .popup-no-arrivals {
+      font-size: 11.5px;
+      color: var(--text-3);
+      text-align: center;
+      padding: 6px 0 2px;
+    }
+
+    .leaflet-control-attribution { font-size: 9px !important; }
+    .leaflet-control-zoom { border: none !important; }
+    .leaflet-control-zoom a {
+      border-radius: 8px !important;
+      box-shadow: var(--shadow-sm) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--text) !important;
+      font-size: 16px !important;
+    }
+
+    @media (max-width: 520px) {
+      .route-legend { display: none; }
+      .info-grid { grid-template-columns: repeat(2, 1fr); }
+      .fc-row { flex-wrap: nowrap; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="app-brand">
+    <div class="app-brand-icon">🚌</div>
+    <div>
+      <div class="app-title">Harvard Shuttle</div>
+      <div class="app-sub">Live transit map</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="rt-pill">
+      <span class="rt-dot" id="realtime-dot"></span>
+      <span id="realtime-label">Live</span>
+    </div>
+  </div>
+</header>
+
+<div id="map"></div>
+
+<div class="floating-controls">
+  <div class="fc-row">
+    <button class="btn btn-primary" id="locate-btn">
+      <span class="btn-icon-wrap">📍</span>
+      <span id="locate-label">My location</span>
+    </button>
+    <button class="btn btn-secondary" id="nearest-btn">
+      <span class="btn-icon-wrap" style="background:#f0f0f0;">🚌</span>
+      Nearest
+    </button>
+    <select class="dest-select" id="dest-select">
+      <option value="">Where to?</option>
+    </select>
+  </div>
+</div>
+
+<div class="route-legend" id="route-legend" style="display:none;">
+  <div class="legend-title">Routes</div>
+  <div class="legend-list" id="legend-list"></div>
+</div>
+
+<div class="info-panel">
+  <div class="info-card">
+    <div class="info-header">
+      <div class="info-title" id="info-title">Waiting for location…</div>
+      <div class="info-badge">
+        <span class="info-badge-dot"></span>
+        <span id="arrival-badge-text">No data</span>
+      </div>
+    </div>
+    <div class="info-grid">
+      <div>
+        <div class="info-cell-label">Stop</div>
+        <div class="info-cell-value" id="info-stop">—</div>
+      </div>
+      <div>
+        <div class="info-cell-label">Walk</div>
+        <div class="info-cell-value" id="info-walk">—</div>
+      </div>
+      <div>
+        <div class="info-cell-label">Next shuttle</div>
+        <div class="info-cell-value" id="info-next">—</div>
+      </div>
+    </div>
+    <div class="status-bar" id="status-text">Enable location to find your nearest shuttle stop.</div>
+  </div>
+</div>
+
+<div class="plan-card" id="plan-card" style="display:none;">
+  <div class="plan-card-inner">
+    <div class="plan-header">
+      <div class="plan-header-left">
+        <span class="plan-route-chip" id="plan-route-chip" style="background:var(--crimson);">—</span>
+        <span class="plan-dest-text" id="plan-dest-text">Destination</span>
+      </div>
+      <button class="plan-close" id="plan-close-btn">✕</button>
+    </div>
+    <div class="plan-steps">
+      <div class="plan-step">
+        <div class="plan-step-icon">🚶</div>
+        <div class="plan-step-kicker">Walk</div>
+        <div class="plan-step-val" id="plan-walk-val">—</div>
+        <div class="plan-step-sub" id="plan-board-stop">—</div>
+      </div>
+      <div class="plan-arrow">›</div>
+      <div class="plan-step">
+        <div class="plan-step-icon">🚌</div>
+        <div class="plan-step-kicker">Board</div>
+        <div class="plan-step-val" id="plan-route-val">—</div>
+        <div class="plan-step-sub" id="plan-next-sub">—</div>
+      </div>
+      <div class="plan-arrow">›</div>
+      <div class="plan-step">
+        <div class="plan-step-icon">📍</div>
+        <div class="plan-step-kicker">Arrive</div>
+        <div class="plan-step-val" id="plan-dest-val" style="font-size:11px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div>
+        <div class="plan-step-sub">destination</div>
+      </div>
+    </div>
+    <div class="plan-footer" id="plan-footer">Fetching route data…</div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script>
+const INITIAL_CENTER = [42.3744, -71.1189];
+const map = L.map("map", { zoomControl: true, attributionControl: true })
+              .setView(INITIAL_CENTER, 15);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+}).addTo(map);
+
+let userMarker         = null;
+let userAccuracyCircle = null;
+let nearestStopMarker  = null;
+let walkingPolyline    = null;
+let destStopMarker     = null;
+
+const stopMarkersByName  = new Map();
+const stopMarkersById    = new Map();
+const vehicleMarkersById = new Map();
+const routePolylines     = new Map();
+
+let allStops      = [];
+let allRoutes     = [];
+let lastPosition  = null;
+let lastNearest   = null;
+let activeRouteId = null;
+
+const infoTitle        = document.getElementById("info-title");
+const infoStop         = document.getElementById("info-stop");
+const infoWalk         = document.getElementById("info-walk");
+const infoNext         = document.getElementById("info-next");
+const statusText       = document.getElementById("status-text");
+const arrivalBadgeText = document.getElementById("arrival-badge-text");
+const realtimeDot      = document.getElementById("realtime-dot");
+const realtimeLabel    = document.getElementById("realtime-label");
+const locateBtn        = document.getElementById("locate-btn");
+const locateLabel      = document.getElementById("locate-label");
+const nearestBtn       = document.getElementById("nearest-btn");
+const destSelect       = document.getElementById("dest-select");
+const planCard         = document.getElementById("plan-card");
+const planRouteChip    = document.getElementById("plan-route-chip");
+const planDestText     = document.getElementById("plan-dest-text");
+const planWalkVal      = document.getElementById("plan-walk-val");
+const planBoardStop    = document.getElementById("plan-board-stop");
+const planRouteVal     = document.getElementById("plan-route-val");
+const planNextSub      = document.getElementById("plan-next-sub");
+const planDestVal      = document.getElementById("plan-dest-val");
+const planFooter       = document.getElementById("plan-footer");
+const planCloseBtn     = document.getElementById("plan-close-btn");
+const routeLegend      = document.getElementById("route-legend");
+const legendList       = document.getElementById("legend-list");
+
+// ── Notifications ────────────────────────────────────────────────────────
+let notif_stopId = null, notif_stopName = null;
+let notif_interval = null, notif_fired = false;
+
+function notif_stopPolling() {
+  if (notif_interval !== null) { clearInterval(notif_interval); notif_interval = null; }
+}
+
+async function notif_requestPermission() {
+  if (!("Notification" in window)) return false;
+  if (Notification.permission === "granted") return true;
+  if (Notification.permission === "denied")  return false;
+  return (await Notification.requestPermission()) === "granted";
+}
+
+async function notif_poll() {
+  if (!notif_stopId || notif_fired) return;
+  try {
+    const res  = await fetch(`/stopArrivals?stopId=${encodeURIComponent(notif_stopId)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.arrivals || data.arrivals.length === 0) return;
+    const next = data.arrivals[0];
+    if (next.arrival_minutes != null && next.arrival_minutes <= 1) {
+      notif_fired = true;
+      notif_stopPolling();
+      new Notification(`🚌 Shuttle arriving at ${notif_stopName} — time to board!`);
+      setStatus(`🔔 Shuttle arriving now at ${notif_stopName}!`);
+    }
+  } catch (e) { console.error("[notif]", e); }
+}
+
+async function notif_start(stopId, stopName) {
+  notif_stopPolling();
+  notif_fired    = false;
+  notif_stopId   = String(stopId);
+  notif_stopName = stopName;
+  if (!(await notif_requestPermission())) {
+    setStatus("Notifications blocked — enable in browser settings for shuttle alerts.");
+    return;
+  }
+  setStatus(`🔔 Alert set for ${stopName} — you'll be notified when shuttle is ≤1 min away.`);
+  notif_poll();
+  notif_interval = setInterval(notif_poll, 15_000);
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────
+function setStatus(t) { statusText.textContent = t; }
+
+function setRealtimeFreshness(s) {
+  if (typeof s !== "number" || !Number.isFinite(s)) {
+    realtimeDot.style.background = "#9ca3af";
+    realtimeLabel.textContent = "Live";
+    return;
+  }
+  if (s <= 90)       { realtimeDot.style.background = "#4ade80"; realtimeLabel.textContent = `${s}s ago`; }
+  else if (s <= 300) { realtimeDot.style.background = "#facc15"; realtimeLabel.textContent = "A few min ago"; }
+  else               { realtimeDot.style.background = "#f87171"; realtimeLabel.textContent = `${Math.round(s/60)}m ago`; }
+}
+
+// ── Icons ────────────────────────────────────────────────────────────────
+function makeStopIcon(colour = "#ffffff", border = "#111827", active = false) {
+  const size = active ? 34 : 26;
+  const r    = size / 2;
+  return L.divIcon({
+    html: `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="${r}" cy="${r}" r="${r - 2}" fill="${colour}" stroke="${border}" stroke-width="${active ? 3 : 2}"/>
+      <circle cx="${r}" cy="${r}" r="${active ? 6 : 4}" fill="${border}"/>
+    </svg>`,
+    className: "",
+    iconSize:   [size, size],
+    iconAnchor: [r, r],
+  });
+}
+
+function makeUserIcon() {
+  return L.divIcon({
+    html: `<div style="width:16px;height:16px;border-radius:50%;background:#2563eb;border:3px solid white;box-shadow:0 0 0 3px rgba(37,99,235,0.3);"></div>`,
+    className: "",
+    iconSize:   [16, 16],
+    iconAnchor: [8, 8],
+  });
+}
+
+function makeVehicleIcon(colour = "#111827") {
+  return L.divIcon({
+    html: `<div style="width:22px;height:22px;border-radius:6px;background:${colour};display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.35);border:2px solid rgba(255,255,255,0.5);">🚌</div>`,
+    className: "",
+    iconSize:   [22, 22],
+    iconAnchor: [11, 11],
+  });
+}
+
+function makeDestIcon() {
+  return L.divIcon({
+    html: `<div style="background:#1d4ed8;color:white;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;box-shadow:0 3px 10px rgba(29,78,216,0.45);white-space:nowrap;">📍 Destination</div>`,
+    className: "",
+    iconSize:   [110, 24],
+    iconAnchor: [55, 24],
+  });
+}
+
+const defaultStopIcon = makeStopIcon("#ffffff", "#374151", false);
+const activeStopIcon  = makeStopIcon("#ffffff", "#a41034", true);
+
+// ── Route polylines ──────────────────────────────────────────────────────
+function setActiveRoute(routeId) {
+  activeRouteId = routeId;
+  for (const [rId, poly] of routePolylines.entries()) {
+    const isActive = (rId === routeId);
+    poly.setStyle({ weight: isActive ? 6 : 3, opacity: isActive ? 0.95 : 0.35 });
+    if (isActive) poly.bringToFront();
+  }
+  for (const el of legendList.querySelectorAll(".legend-item")) {
+    el.classList.toggle("active", el.dataset.routeId === String(routeId));
+  }
+}
+
+function clearActiveRoute() {
+  activeRouteId = null;
+  for (const poly of routePolylines.values()) {
+    poly.setStyle({ weight: 3, opacity: 0.55 });
+  }
+  for (const el of legendList.querySelectorAll(".legend-item")) {
+    el.classList.remove("active");
+  }
+}
+
+async function loadRoutes() {
+  try {
+    const res = await fetch("/routes");
+    if (!res.ok) return;
+    allRoutes = await res.json();
+
+    for (const route of allRoutes) {
+      if (!route.coords || route.coords.length < 2) continue;
+      const poly = L.polyline(route.coords, {
+        color:    route.colour,
+        weight:   3,
+        opacity:  0.55,
+        lineCap:  "round",
+        lineJoin: "round",
+      }).addTo(map);
+      routePolylines.set(route.route_id, poly);
+    }
+
+    buildLegend();
+  } catch (e) {
+    console.error("loadRoutes error", e);
+  }
+}
+
+function buildLegend() {
+  legendList.innerHTML = "";
+  if (allRoutes.length === 0) return;
+
+  for (const route of allRoutes) {
+    const name = route.short_name || route.long_name || route.route_id;
+    const item = document.createElement("div");
+    item.className = "legend-item";
+    item.dataset.routeId = route.route_id;
+    item.innerHTML = `
+      <div class="legend-swatch" style="background:${route.colour};"></div>
+      <span class="legend-label">${name}</span>
+    `;
+    legendList.appendChild(item);
+  }
+  routeLegend.style.display = "";
+}
+
+// ── Stop markers ─────────────────────────────────────────────────────────
+async function loadStops() {
+  try {
+    setStatus("Loading shuttle stops…");
+    const res   = await fetch("/stops");
+    if (!res.ok) throw new Error("Failed to load stops");
+    const stops = await res.json();
+    allStops = stops || [];
+
+    destSelect.innerHTML =
+      '<option value="">Where to?</option>' +
+      allStops
+        .filter(s => s.stop_id && s.stop_name)
+        .map(s => `<option value="${String(s.stop_id).trim()}">${s.stop_name.trim()}</option>`)
+        .join("");
+
+    allStops.forEach(s => {
+      if (!s.stop_lat || !s.stop_lon) return;
+      const marker = L.marker([s.stop_lat, s.stop_lon], { icon: defaultStopIcon, zIndexOffset: 100 }).addTo(map);
+      marker.on("click", () => showStopPopup(marker, s));
+      if (s.stop_name) stopMarkersByName.set(s.stop_name, marker);
+      stopMarkersById.set(String(s.stop_id), marker);
+    });
+
+    setStatus("Tap \u201cMy location\u201d to find your nearest shuttle stop.");
+  } catch (e) {
+    console.error(e);
+    setStatus("Could not load shuttle stops. Try refreshing.");
+  }
+}
+
+function highlightStop(nameOrId) {
+  let marker = stopMarkersByName.get(nameOrId) || stopMarkersById.get(String(nameOrId));
+  if (!marker) return;
+  if (nearestStopMarker && nearestStopMarker !== marker) {
+    nearestStopMarker.setIcon(defaultStopIcon);
+    nearestStopMarker.setZIndexOffset(100);
+  }
+  nearestStopMarker = marker;
+  marker.setIcon(activeStopIcon);
+  marker.setZIndexOffset(500);
+  marker.openPopup();
+}
+
+// ── Stop popup ───────────────────────────────────────────────────────────
+async function showStopPopup(marker, stop) {
+  const name = stop.stop_name || "Shuttle stop";
+  marker.bindPopup(buildPopupHtml(name, [], []), { maxWidth: 240, minWidth: 200 }).openPopup();
+
+  try {
+    const res  = await fetch(`/stopArrivals?stopId=${encodeURIComponent(stop.stop_id)}`);
+    if (!res.ok) throw new Error("Failed stopArrivals");
+    const data = await res.json();
+    marker.setPopupContent(buildPopupHtml(data.stop_name || name, data.arrivals || [], data.routes || []));
+    if (marker.isPopupOpen()) marker.openPopup();
+  } catch (e) {
+    console.error(e);
+    marker.setPopupContent(buildPopupHtml(name, null, []));
+    if (marker.isPopupOpen()) marker.openPopup();
+  }
+}
+
+function buildPopupHtml(stopName, arrivals, routes) {
+  const routeChips = (routes || []).map(r =>
+    `<span class="popup-route-chip" style="background:${r.colour || '#374151'};">${r.route_name || r.route_id}</span>`
+  ).join("");
+
+  let arrivalRows = "";
+  if (arrivals === null) {
+    arrivalRows = `<div class="popup-no-arrivals">Could not load arrivals.</div>`;
+  } else if (arrivals.length === 0) {
+    arrivalRows = `<div class="popup-no-arrivals">No upcoming arrivals.</div>`;
+  } else {
+    arrivalRows = arrivals.map(a => {
+      const mins   = a.arrival_minutes != null ? `${a.arrival_minutes} min` : "soon";
+      const colour = a.route_colour || "#374151";
+      const rName  = a.route_name || a.route_id || "Shuttle";
+      return `
+        <div class="popup-arrival-row">
+          <div class="popup-arrival-name">
+            <div class="popup-arrival-dot" style="background:${colour};"></div>
+            ${rName}
+          </div>
+          <div class="popup-arrival-mins">${mins}</div>
+        </div>`;
+    }).join("");
+  }
+
+  return `
+    <div class="popup-header">
+      <div class="popup-stop-name">${stopName}</div>
+      ${routeChips ? `<div class="popup-routes-row">${routeChips}</div>` : ""}
+    </div>
+    <div class="popup-body">
+      <div class="popup-arrivals-label">Next Arrivals</div>
+      ${arrivalRows}
+    </div>`;
+}
+
+// ── Vehicles ─────────────────────────────────────────────────────────────
+async function refreshVehicles() {
+  try {
+    const res      = await fetch("/vehicles");
+    if (!res.ok) return;
+    const vehicles = await res.json();
+    const seenIds  = new Set();
+
+    vehicles.forEach((v, idx) => {
+      const id     = v.id || `anon-${idx}`;
+      if (v.lat == null || v.lon == null) return;
+      seenIds.add(id);
+      const latLng = [v.lat, v.lon];
+      const colour = v.colour || "#374151";
+
+      let marker = vehicleMarkersById.get(id);
+      if (!marker) {
+        marker = L.marker(latLng, { icon: makeVehicleIcon(colour), zIndexOffset: 200 }).addTo(map);
+        vehicleMarkersById.set(id, marker);
+      } else {
+        marker.setLatLng(latLng);
+        marker.setIcon(makeVehicleIcon(colour));
+      }
+
+      const routeInfo = allRoutes.find(r => r.route_id === v.route_id);
+      const routeName = routeInfo
+        ? (routeInfo.short_name || routeInfo.long_name || v.route_id)
+        : (v.route_id ? `Route ${v.route_id}` : "Shuttle");
+      marker.bindPopup(`<div style="padding:8px 10px;font-family:'DM Sans',sans-serif;"><strong style="font-size:13px;">${routeName}</strong><br/><span style="font-size:11px;color:#9a9a9a;">En route</span></div>`);
+    });
+
+    for (const [id, marker] of vehicleMarkersById.entries()) {
+      if (!seenIds.has(id)) { map.removeLayer(marker); vehicleMarkersById.delete(id); }
+    }
+  } catch (e) { console.error("refreshVehicles", e); }
+}
+
+// ── Plan overlays ────────────────────────────────────────────────────────
+function clearPlanOverlays() {
+  if (walkingPolyline) { map.removeLayer(walkingPolyline); walkingPolyline = null; }
+  if (destStopMarker)  { map.removeLayer(destStopMarker);  destStopMarker  = null; }
+}
+
+function drawWalkingPath(uLat, uLon, sLat, sLon) {
+  clearPlanOverlays();
+  walkingPolyline = L.polyline([[uLat, uLon], [sLat, sLon]], {
+    color: "#2563eb", weight: 3, opacity: 0.8, dashArray: "5 8",
+  }).addTo(map);
+}
+
+function markDestStop(destStop) {
+  if (!destStop?.stop_lat) return;
+  destStopMarker = L.marker([destStop.stop_lat, destStop.stop_lon], { icon: makeDestIcon(), zIndexOffset: 600 }).addTo(map);
+  destStopMarker.bindPopup(`<div style="padding:8px 10px;font-family:'DM Sans',sans-serif;"><strong>📍 ${destStop.stop_name || "Destination"}</strong></div>`);
+}
+
+planCloseBtn.addEventListener("click", () => {
+  planCard.style.display = "none";
+  clearPlanOverlays();
+  clearActiveRoute();
+  if (nearestStopMarker) { nearestStopMarker.setIcon(defaultStopIcon); nearestStopMarker = null; }
+  destSelect.value = "";
+});
+
+// ── callPlan ─────────────────────────────────────────────────────────────
+async function callPlan(destStopId) {
+  if (!destStopId) return;
+  if (!lastPosition) {
+    setStatus("We need your location first \u2014 tap \u201cMy location\u201d.");
+    infoTitle.textContent = "Location needed";
+    return;
+  }
+
+  const destStop  = allStops.find(s => String(s.stop_id).trim() === destStopId) || null;
+  const destLabel = destStop?.stop_name || "Destination";
+
+  planCard.style.display = "flex";
+  planRouteChip.textContent      = "\u2026";
+  planRouteChip.style.background = "#9ca3af";
+  planDestText.textContent       = `\u2192 ${destLabel}`;
+  planWalkVal.textContent        = "\u2026";
+  planBoardStop.textContent      = "";
+  planRouteVal.textContent       = "\u2026";
+  planNextSub.textContent        = "";
+  planDestVal.textContent        = destLabel;
+  planFooter.textContent         = "Finding best route\u2026";
+
+  try {
+    const url  = `/plan?lat=${encodeURIComponent(lastPosition.lat)}&lon=${encodeURIComponent(lastPosition.lon)}&destStopId=${encodeURIComponent(destStopId)}`;
+    const res  = await fetch(url);
+    if (!res.ok) throw new Error("Failed /plan");
+    const data = await res.json();
+
+    if (data.error) { planFooter.textContent = data.error; planRouteChip.textContent = "No route"; return; }
+
+    const boardAt   = data.board_at   || "\u2014";
+    const routeName = data.route_name || data.route_id || "Shuttle";
+    const colour    = data.route_colour || "#a41034";
+    const walkMins  = data.walk_minutes != null ? data.walk_minutes : "?";
+
+    planRouteChip.textContent      = routeName;
+    planRouteChip.style.background = colour;
+    planDestText.textContent       = `\u2192 ${destLabel}`;
+    planWalkVal.textContent        = `${walkMins} min`;
+    planBoardStop.textContent      = boardAt;
+    planRouteVal.textContent       = routeName;
+    planDestVal.textContent        = data.dest_stop_name || destLabel;
+
+    let nextText = "No data";
+    if (data.arrivals?.length > 0) {
+      const f = data.arrivals[0];
+      nextText = f.arrival_minutes != null ? `${f.arrival_minutes} min` : "soon";
+    }
+    planNextSub.textContent = `Next: ${nextText}`;
+
+    const freshSecs = data.realtime_freshness_seconds;
+    planFooter.textContent = freshSecs != null ? `Live \u00b7 updated ${freshSecs}s ago` : "Live data";
+    setRealtimeFreshness(freshSecs);
+
+    if (data.route_id) setActiveRoute(data.route_id);
+    highlightStop(data.board_stop_id || boardAt);
+
+    if (data.board_stop_lat != null) {
+      drawWalkingPath(lastPosition.lat, lastPosition.lon, data.board_stop_lat, data.board_stop_lon);
+    }
+    if (destStop) markDestStop(destStop);
+
+    const bounds = L.latLngBounds([[lastPosition.lat, lastPosition.lon]]);
+    if (data.board_stop_lat != null) bounds.extend([data.board_stop_lat, data.board_stop_lon]);
+    if (destStop?.stop_lat)          bounds.extend([destStop.stop_lat, destStop.stop_lon]);
+    map.fitBounds(bounds.pad(0.22), { animate: true });
+
+    infoTitle.textContent        = `To ${destLabel}`;
+    infoStop.textContent         = boardAt;
+    infoWalk.textContent         = `${walkMins} min`;
+    infoNext.textContent         = nextText;
+    arrivalBadgeText.textContent = `${routeName} \u00b7 ${nextText}`;
+    setStatus(`Walk ${walkMins} min \u2192 board ${routeName} at ${boardAt}.`);
+
+    if (data.board_stop_id != null) notif_start(data.board_stop_id, boardAt);
+  } catch (e) {
+    console.error(e);
+    planCard.style.display = "none";
+    infoTitle.textContent  = "Could not plan trip";
+    setStatus("Problem calling /plan \u2014 please try again.");
+  }
+}
+
+// ── callNearest ──────────────────────────────────────────────────────────
+async function callNearest(lat, lon) {
+  try {
+    infoTitle.textContent        = "Finding nearest stop\u2026";
+    arrivalBadgeText.textContent = "Loading\u2026";
+    setStatus("Looking up nearest shuttle stop\u2026");
+
+    const res  = await fetch(`/nearest?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`);
+    if (!res.ok) throw new Error("Failed /nearest");
+    const data = await res.json();
+    lastNearest = data;
+
+    infoStop.textContent = data.stop || "Unknown stop";
+    infoWalk.textContent = (data.walk_minutes ?? "?") + " min";
+
+    if (data.next_arrivals?.length > 0) {
+      const first = data.next_arrivals[0];
+      infoNext.textContent         = first.arrival_minutes != null ? `${first.arrival_minutes} min` : "soon";
+      arrivalBadgeText.textContent = data.next_arrivals.slice(0, 3)
+        .map(a => a.arrival_minutes != null ? `${a.arrival_minutes}m` : "\u2014").join(" \u00b7 ");
+    } else {
+      infoNext.textContent         = "\u2014";
+      arrivalBadgeText.textContent = "No shuttles";
+    }
+
+    infoTitle.textContent = "Nearest shuttle stop";
+    setRealtimeFreshness(data.realtime_freshness_seconds);
+    setStatus("Stop found. Walk time and arrivals shown below.");
+
+    if (data.stop_id != null) notif_start(data.stop_id, data.stop || "your stop");
+    highlightStop(data.stop_id || data.stop);
+
+    if (data.stop_lat != null) {
+      const bounds = L.latLngBounds([[data.stop_lat, data.stop_lon]]);
+      if (lastPosition) bounds.extend([lastPosition.lat, lastPosition.lon]);
+      map.fitBounds(bounds.pad(0.28), { animate: true });
+    }
+  } catch (e) {
+    console.error(e);
+    infoTitle.textContent = "Couldn\u2019t find a stop";
+    setStatus("Problem calling /nearest \u2014 please try again.");
+  }
+}
+
+// ── Location ─────────────────────────────────────────────────────────────
+function updateUserMarker(lat, lon, accuracy) {
+  const ll = [lat, lon];
+  if (!userMarker) {
+    userMarker = L.marker(ll, { icon: makeUserIcon(), zIndexOffset: 300 }).addTo(map);
+  } else { userMarker.setLatLng(ll); }
+
+  if (!userAccuracyCircle) {
+    userAccuracyCircle = L.circle(ll, { radius: accuracy || 40, color: "#2563eb", fillColor: "#2563eb", fillOpacity: 0.07, weight: 1 }).addTo(map);
+  } else {
+    userAccuracyCircle.setLatLng(ll);
+    userAccuracyCircle.setRadius(accuracy || 40);
+  }
+}
+
+function locateOnce({ recenter = true, alsoCallNearest = false } = {}) {
+  if (!navigator.geolocation) { setStatus("Geolocation not available."); return; }
+
+  locateBtn.disabled  = true;
+  nearestBtn.disabled = true;
+  locateLabel.textContent = "Locating\u2026";
+
+  navigator.geolocation.getCurrentPosition(
+    async pos => {
+      const { latitude, longitude, accuracy } = pos.coords;
+      lastPosition = { lat: latitude, lon: longitude, accuracy };
+      updateUserMarker(latitude, longitude, accuracy);
+      if (recenter) map.setView([latitude, longitude], 16, { animate: true });
+      if (alsoCallNearest) {
+        await callNearest(latitude, longitude);
+      } else {
+        infoTitle.textContent        = "Location detected";
+        arrivalBadgeText.textContent = "Tap Nearest";
+        setStatus("Found you on the map \u2014 tap \u201cNearest\u201d to find your stop.");
+      }
+    },
+    err => {
+      console.error(err);
+      setStatus("Could not access location. Check browser permissions.");
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+
+  setTimeout(() => {
+    locateBtn.disabled       = false;
+    nearestBtn.disabled      = false;
+    locateLabel.textContent  = "My location";
+  }, 1400);
+}
+
+// ── Event listeners ──────────────────────────────────────────────────────
+locateBtn.addEventListener("click", () => locateOnce({ recenter: true, alsoCallNearest: true }));
+
+nearestBtn.addEventListener("click", () => {
+  if (!lastPosition) { setStatus("Need your location first \u2014 tap \u201cMy location\u201d."); return; }
+  callNearest(lastPosition.lat, lastPosition.lon);
+});
+
+destSelect.addEventListener("change", () => {
+  const id = destSelect.value;
+  if (!id) return;
+  callPlan(id);
+});
+
+// ── Init ─────────────────────────────────────────────────────────────────
+(async function init() {
+  await loadStops();
+  await loadRoutes();
+  await refreshVehicles();
+  setInterval(refreshVehicles, 10_000);
+  setTimeout(() => {
+    if (navigator.geolocation)
+      setStatus("Tap \u201cMy location\u201d to get started, or pick a destination.");
+  }, 800);
+})();
+</script>
+</body>
+</html>
